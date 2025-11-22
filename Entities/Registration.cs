@@ -1,0 +1,13 @@
+﻿using System;
+
+namespace EventManagementAPI.Entities
+{
+    public class Registration
+    {
+        public int Id { get; set; }               
+        public int EventId { get; set; }          
+        public int ParticipantId { get; set; }    
+        public string Status { get; set; }        
+        public DateTime RegistrationDate { get; set; } 
+    }
+}
