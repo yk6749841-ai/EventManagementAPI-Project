@@ -9,15 +9,23 @@ namespace EventManagementAPI.Controllers
     [Route("participants")]
     public class ParticipantController : ControllerBase
     {
-        private static List<Participant> participants = new List<Participant>();
+        private readonly DataContext _context;
+
+        public ParticipantController(DataContext context)
+        {
+            _context = context;
+        }
 
         [HttpGet]
-        public ActionResult<List<Participant>> GetAll() => participants;
+        public ActionResult<List<Participant>> GetAll()
+        {
+            return _context.Participants;
+        }
 
         [HttpGet("{id}")]
         public ActionResult<Participant> GetById(int id)
         {
-            var p = participants.FirstOrDefault(x => x.Id == id);
+            var p = _context.Participants.FirstOrDefault(x => x.Id == id);
             if (p == null) return NotFound();
             return p;
         }
@@ -25,15 +33,18 @@ namespace EventManagementAPI.Controllers
         [HttpPost]
         public ActionResult<Participant> Create(Participant newParticipant)
         {
-            newParticipant.Id = participants.Count > 0 ? participants.Max(x => x.Id) + 1 : 1;
-            participants.Add(newParticipant);
+            newParticipant.Id = _context.Participants.Count > 0
+                ? _context.Participants.Max(x => x.Id) + 1
+                : 1;
+
+            _context.Participants.Add(newParticipant);
             return CreatedAtAction(nameof(GetById), new { id = newParticipant.Id }, newParticipant);
         }
 
         [HttpPut("{id}")]
         public ActionResult Update(int id, Participant updatedParticipant)
         {
-            var p = participants.FirstOrDefault(x => x.Id == id);
+            var p = _context.Participants.FirstOrDefault(x => x.Id == id);
             if (p == null) return NotFound();
 
             p.Name = updatedParticipant.Name;
@@ -46,21 +57,25 @@ namespace EventManagementAPI.Controllers
         [HttpDelete("{id}")]
         public ActionResult Delete(int id)
         {
-            var p = participants.FirstOrDefault(x => x.Id == id);
+            var p = _context.Participants.FirstOrDefault(x => x.Id == id);
             if (p == null) return NotFound();
 
-            participants.Remove(p);
+            _context.Participants.Remove(p);
+
+            // מחיקת כל ההרשמות הקשורות למשתתף זה לשמירה על עקביות הנתונים
+            _context.Registrations.RemoveAll(r => r.ParticipantId == id);
+
             return NoContent();
         }
+
         [HttpGet("{id}/registrations")]
         public ActionResult<List<Registration>> GetRegistrationsForParticipant(int id)
         {
-            var p = participants.FirstOrDefault(x => x.Id == id);
+            var p = _context.Participants.FirstOrDefault(x => x.Id == id);
             if (p == null) return NotFound();
 
-            var regs = RegistrationController.registrations.Where(r => r.ParticipantId == id).ToList();
+            var regs = _context.Registrations.Where(r => r.ParticipantId == id).ToList();
             return regs;
         }
-
     }
 }

@@ -9,6 +9,7 @@ namespace EventManagementAPI
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            builder.Services.AddSingleton<DataContext>();
 
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();

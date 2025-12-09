@@ -10,15 +10,23 @@ namespace EventManagementAPI.Controllers
     [Route("events")]
     public class EventController : ControllerBase
     {
-        private static List<Event> events = new List<Event>();
+        private readonly DataContext _context;
+
+        public EventController(DataContext context)
+        {
+            _context = context;
+        }
 
         [HttpGet]
-        public ActionResult<List<Event>> GetAll() => events;
+        public ActionResult<List<Event>> GetAll()
+        {
+            return _context.Events;
+        }
 
         [HttpGet("{id}")]
         public ActionResult<Event> GetById(int id)
         {
-            var ev = events.FirstOrDefault(e => e.Id == id);
+            var ev = _context.Events.FirstOrDefault(e => e.Id == id);
             if (ev == null) return NotFound();
             return ev;
         }
@@ -26,15 +34,15 @@ namespace EventManagementAPI.Controllers
         [HttpPost]
         public ActionResult<Event> Create(Event newEvent)
         {
-            newEvent.Id = events.Count > 0 ? events.Max(e => e.Id) + 1 : 1;
-            events.Add(newEvent);
+            newEvent.Id = _context.Events.Count > 0 ? _context.Events.Max(e => e.Id) + 1 : 1;
+            _context.Events.Add(newEvent);
             return CreatedAtAction(nameof(GetById), new { id = newEvent.Id }, newEvent);
         }
 
         [HttpPut("{id}")]
         public ActionResult Update(int id, Event updatedEvent)
         {
-            var ev = events.FirstOrDefault(e => e.Id == id);
+            var ev = _context.Events.FirstOrDefault(e => e.Id == id);
             if (ev == null) return NotFound();
 
             ev.Title = updatedEvent.Title;
@@ -49,22 +57,26 @@ namespace EventManagementAPI.Controllers
         [HttpDelete("{id}")]
         public ActionResult Delete(int id)
         {
-            var ev = events.FirstOrDefault(e => e.Id == id);
+            var ev = _context.Events.FirstOrDefault(e => e.Id == id);
             if (ev == null) return NotFound();
 
-            events.Remove(ev);
+            _context.Events.Remove(ev);
+            _context.Registrations.RemoveAll(r => r.EventId == id);
+
             return NoContent();
         }
+
         [HttpGet("{id}/availability")]
         public ActionResult<int> GetAvailability(int id)
         {
-            var ev = events.FirstOrDefault(e => e.Id == id);
+            var ev = _context.Events.FirstOrDefault(e => e.Id == id);
             if (ev == null) return NotFound();
 
-            int registeredCount = RegistrationController.registrations.Count(r => r.EventId == id && r.Status == "Registered");
+            int registeredCount = _context.Registrations
+                                        .Count(r => r.EventId == id && r.Status == "מאושר");
+
             int availableSeats = ev.Capacity - registeredCount;
             return availableSeats;
         }
-
     }
 }

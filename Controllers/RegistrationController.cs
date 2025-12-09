@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
 namespace EventManagementAPI.Controllers
 {
@@ -9,15 +10,23 @@ namespace EventManagementAPI.Controllers
     [Route("registrations")]
     public class RegistrationController : ControllerBase
     {
-        public static List<Registration> registrations = new List<Registration>();
+        private readonly DataContext _context;
+
+        public RegistrationController(DataContext context)
+        {
+            _context = context;
+        }
 
         [HttpGet]
-        public ActionResult<List<Registration>> GetAll() => registrations;
+        public ActionResult<List<Registration>> GetAll()
+        {
+            return _context.Registrations;
+        }
 
         [HttpGet("{id}")]
         public ActionResult<Registration> GetById(int id)
         {
-            var r = registrations.FirstOrDefault(x => x.Id == id);
+            var r = _context.Registrations.FirstOrDefault(x => x.Id == id);
             if (r == null) return NotFound();
             return r;
         }
@@ -25,15 +34,33 @@ namespace EventManagementAPI.Controllers
         [HttpPost]
         public ActionResult<Registration> Create(Registration newReg)
         {
-            newReg.Id = registrations.Count > 0 ? registrations.Max(x => x.Id) + 1 : 1;
-            registrations.Add(newReg);
+            // בדיקת תקינות: ודא שהאירוע קיים
+            var ev = _context.Events.FirstOrDefault(e => e.Id == newReg.EventId);
+            if (ev == null) return BadRequest("האירוע המבוקש לא קיים.");
+
+            // בדיקת תקינות: ודא שהמשתתף קיים
+            var p = _context.Participants.FirstOrDefault(p => p.Id == newReg.ParticipantId);
+            if (p == null) return BadRequest("המשתתף המבוקש לא קיים.");
+
+            newReg.Id = _context.Registrations.Count > 0
+                ? _context.Registrations.Max(r => r.Id) + 1
+                : 1;
+
+            // הגדרת תאריך הרשמה נוכחי אם לא הוגדר
+            if (newReg.RegistrationDate == DateTime.MinValue)
+            {
+                newReg.RegistrationDate = DateTime.Now;
+            }
+
+            _context.Registrations.Add(newReg);
+
             return CreatedAtAction(nameof(GetById), new { id = newReg.Id }, newReg);
         }
 
         [HttpPut("{id}")]
         public ActionResult Update(int id, Registration updatedReg)
         {
-            var r = registrations.FirstOrDefault(x => x.Id == id);
+            var r = _context.Registrations.FirstOrDefault(x => x.Id == id);
             if (r == null) return NotFound();
 
             r.EventId = updatedReg.EventId;
@@ -47,21 +74,22 @@ namespace EventManagementAPI.Controllers
         [HttpDelete("{id}")]
         public ActionResult Delete(int id)
         {
-            var r = registrations.FirstOrDefault(x => x.Id == id);
+            var r = _context.Registrations.FirstOrDefault(x => x.Id == id);
             if (r == null) return NotFound();
 
-            registrations.Remove(r);
+            _context.Registrations.Remove(r);
+
             return NoContent();
         }
+
         [HttpPut("{id}/status")]
         public ActionResult UpdateStatus(int id, [FromBody] string newStatus)
         {
-            var r = registrations.FirstOrDefault(x => x.Id == id);
+            var r = _context.Registrations.FirstOrDefault(x => x.Id == id);
             if (r == null) return NotFound();
 
             r.Status = newStatus;
             return NoContent();
         }
-
     }
 }
